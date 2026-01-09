@@ -1,27 +1,26 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const cors = require('cors'); // Added for safety
+const cors = require('cors');
 
 const app = express();
-app.use(cors()); // Enable CORS for the express app
+app.use(cors());
 
 const server = http.createServer(app);
 
-// Updated CORS to be more flexible for deployment
 const io = new Server(server, { 
     cors: { 
-        origin: "*",
+        origin: "*", 
         methods: ["GET", "POST"]
     } 
 });
 
 io.on('connection', (socket) => {
-    console.log("A user connected:", socket.id);
+    console.log("User Connected:", socket.id);
 
-    socket.on('join-room', (id) => {
-        socket.join(id);
-        console.log(`User joined room: ${id}`);
+    socket.on('join-room', (roomId) => {
+        socket.join(roomId);
+        console.log(`Socket ${socket.id} joined room: ${roomId}`);
     });
 
     socket.on('update-car-color', (data) => {
@@ -29,22 +28,21 @@ io.on('connection', (socket) => {
     });
 
     socket.on('send-tilt', (data) => {
-        // Using io.to instead of socket.to ensures everyone in room gets it
         io.to(data.roomId).emit('receive-tilt', data);
     });
 
-    // FIXED: Match the event name in your App.js
-    socket.on('vibrate-phone', (data) => {
-        io.to(data.roomId).emit('vibrate-phone'); 
+    socket.on('send-nitro', (data) => {
+        io.to(data.roomId).emit('receive-nitro');
     });
 
-    // FIXED: Match the 'restart-game' emit in your App.js
+    // When the computer crashes, tell the phone to vibrate and show restart button
+    socket.on('vibrate-phone', (data) => {
+        io.to(data.roomId).emit('vibrate-phone');
+    });
+
+    // When the phone hits REBOOT, tell the computer to restart
     socket.on('restart-game', (roomId) => {
         io.to(roomId).emit('restart-game');
-    });
-
-    socket.on('send-nitro', (roomId) => {
-        io.to(roomId).emit('receive-nitro');
     });
 
     socket.on('disconnect', () => {
@@ -52,8 +50,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// IMPORTANT: Use process.env.PORT for Render
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server is live on port ${PORT}`);
+    console.log(`Server live on port ${PORT}`);
 });
